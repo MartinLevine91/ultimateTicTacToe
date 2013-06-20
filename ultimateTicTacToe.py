@@ -120,7 +120,7 @@ def u_in():
     complain("User failed to enter valid input 10 times.")
 
             
-def playGame( fullBoard = None, nextToPlayIn = None, player = "x",recordGame = False):
+def playGame( fullBoard = None, nextToPlayIn = None, player = "x",recordGame = False, gameSoFar = []):
 
     if fullBoard == None:
         fullBoard = [["?"]*9 for _ in range(9)]
@@ -164,8 +164,13 @@ def playGame( fullBoard = None, nextToPlayIn = None, player = "x",recordGame = F
         else:
             print "It is %s's go. Enter the co-ordinates of your move." % (player,)
             row,col = u_in()
-            if fullBoard[nextToPlayIn[0]*3 + row][nextToPlayIn[1]*3 + col] == "?":
-                fullBoard[nextToPlayIn[0]*3 + row][nextToPlayIn[1]*3 + col] = player
+            r = nextToPlayIn[0]*3 + row]
+            c = nextToPlayIn[1]*3 + col]
+            if fullBoard[r][c] == "?":
+                fullBoard[r][c] = player
+
+                if recordGame:
+                    gameSoFar.append((nextToPlayIn,(row,col)))
                 if player == "x":
                     player = "o"
                 else:
@@ -173,7 +178,7 @@ def playGame( fullBoard = None, nextToPlayIn = None, player = "x",recordGame = F
                 nextToPlayIn = row,col
         
     
-def playSetGame(gameSequence, continueGame = True,recordContinuedGame = False, printMove = False, delay = 0.5):
+def playSetGame(gameSequence, continueGame = True,recordContinuedGame = False, printMove = False, delay = 0):
     fullBoard = [["?"]*9 for _ in range(9)]
     nextToPlayIn = None
     player = "x"
@@ -215,7 +220,11 @@ def playSetGame(gameSequence, continueGame = True,recordContinuedGame = False, p
         if assessFullBoard(fullBoard) != "?":
             print assessFullBoard(fullBoard) + " has won! Not continuing game"
         else:
-            playGame(fullBoard,nextToPlayIn,player,recordContinuedGame)
+            print ""
+            print ""
+            print ""
+            print ""
+            playGame(fullBoard,nextToPlayIn,player,recordContinuedGame,gameSequence)
 
 
 
@@ -242,7 +251,7 @@ playSetGame([
        
 
 
-            ],True,False,True)
+            ],True,True,True,1)
 """
  x to play.
 
