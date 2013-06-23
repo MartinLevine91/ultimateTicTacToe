@@ -1,30 +1,65 @@
 
 import time
+import re
 
 def assessBoard(board):
-
+    board = convertBoard(board)
+    winners = {"x": False, "o": False, "b": False,"?": False}
     #rows & cols
+
+    
     for i in range(3):
         #rows
-        if board[i][0] != "?":
-            if board[i][1] == board[i][0] and board[i][1] == board[i][2]:
-                return board[i][0]
+        winner = assessRow((board[i][0], board[i][1], board[i][2]))
+        winners[winner] = True
         #cols
-        if board[0][i] != "?":
-            if board[1][i] == board[0][i] and board[1][i] == board[2][i]:
-                return board[0][i]
+        winner = assessRow((board[0][i], board[1][i], board[2][i]))
+        winners[winner] = True
+
     #diag 1
-    if board[0][0] != "?":
-        if board[0][0] == board[1][1] and board[1][1] == board[2][2]:
-            return board[0][0]
+    winner = assessRow((board[0][0], board[1][1], board[2][2]))
+    winners[winner] = True
     #diag 2
-    if board[0][2] != "?":
-        if board[0][2] == board[1][1] and board[1][1] == board[2][0]:
-             return board[0][2]
+    winner = assessRow((board[2][0], board[1][1], board[0][2]))
+    winners[winner] = True
+
+    if winners["b"] or (winners["x"] and winners["o"]):
+        return "b"
+    elif winners["x"]:
+        return "x"
+    elif winners["o"]:
+        return "o"
+    elif winners["?"]:
+        return "?"
+    else:
+        complain("something's gone wrong")
+
+def assessRow(row):
+    win = True
+    for cell in row:
+        if cell != "b":
+            win = False
+    if win:
+        return "b"
+
+    win = True
+    for cell in row:
+        if cell not in ["x","b"]:
+            win = False
+    if win:
+        return "x"
+
+    win = True
+    for cell in row:
+        if cell not in ["o","b"]:
+            win = False
+    if win:
+        return "o"
     return "?"
 
-
 def assessFullBoard(fullBoard,returnCompactBoard = False):
+
+    fullBoard = convertBoard(fullBoard)
     compactBoard = [["?"]*3 for _ in range(3)]
     miniBoard  = [["?"]*3 for _ in range(3)]
     for row in range(3):
@@ -34,6 +69,25 @@ def assessFullBoard(fullBoard,returnCompactBoard = False):
                     miniBoard[r][c] = fullBoard[row*3 + r][col*3 + c]
             compactBoard[row][col] = assessBoard(miniBoard)
     return assessBoard(compactBoard)
+
+def convertBoard(board):
+    convertedBoard = []
+    for row in board:
+        convertedRow = []
+        for col in row:
+            if col in ["?","x","o","b"]:
+                convertedRow.append(col)
+            elif isinstance(col, int):
+                if col%2 == 0:
+                    convertedRow.append("x")
+                elif col%2 == 1:
+                    convertedRow.append("o")
+                else:
+                    complain("ummmm, what?")
+            else:
+                complain("invalid board")
+        convertedBoard.append(convertedRow)
+    return convertedBoard
 
 def boardIsFull(fullBoard, nextToPlayIn):
     row, col = nextToPlayIn
@@ -45,6 +99,7 @@ def boardIsFull(fullBoard, nextToPlayIn):
 
 def drawBoard(fullBoard,nextToPlayIn = None, printBoard = False):
 
+    fullBoard = convertBoard(fullBoard)
     boardMatrix = [[" "]*25 for _ in range(16)]
 
     # Draw in board outline
@@ -102,39 +157,69 @@ def drawBoard(fullBoard,nextToPlayIn = None, printBoard = False):
 
 
 
-
 def u_in():
+    p = re.compile('[012][,][ ]*[012]')
     for attempt in range(10):
         try:
-            if attempt == 9:
-                print "Last try!"
-            userIn = input("$ ")
+            userIn = raw_input("$: ")
             try:
-                r,c = userIn
-                if r in [0,1,2] and c in [0,1,2]:
-                    return userIn
+                if p.match(userIn):
+                    UI = (int(userIn[0]),int(userIn[-1]))
+                    return UI
+                else:
+                    print error
             except:
-               pass 
+                try:
+                    userIn = str(userIn)
+                    if userIn == "":
+                        userIn = None
+                except:
+                    userIn = None
         except:
             userIn = None
+        if isinstance(userIn, str):
+            if userIn.lower() == "kill program":
+                main.complain("Got kill request")
+            elif userIn.lower() in ["quit", "undo", "q", "u"]:
+                return userIn
+        print "Either enter a co-ordinate in the form 'r, c' where r and c are integers between 0 and 2, or enter 'quit' to quit, 'undo' to undo the last move or 'kill program' to force the program to crash."
+
+
+
+
+
+
     complain("User failed to enter valid input 10 times.")
 
             
-def playGame( fullBoard = None, nextToPlayIn = None, player = "x",recordGame = False, gameSoFar = []):
+def playGame( fullBoard = None, nextToPlayIn = None, moveNum = 0,recordGame = True, gameSoFar = []):
 
     if fullBoard == None:
         fullBoard = [["?"]*9 for _ in range(9)]
-        print '\n' * 50
         print "All coordinates must be entered in the format:"
         print "$ r, c"
         print "Where r and c are the row and column, indexing from zero."
         print ""
         print ""
         print "New game, please enter the co-ordinates of the first mini-board to be played in:"
-        row,col = u_in()
+        UI = u_in()
+        if isinstance(UI, str):
+            if UI.lower() in ["u", "undo"]:
+                r,c = gameSoFar[-1][0]
+                row,col = gameSoFar[-1][1]
+                fullBoard[r*3 + row][c*3 + col] = "?"
+                gameSoFar.pop()
+            elif UI.lower() in ["q", "quit"]:
+                return 0
+        else:
+            row,col = UI
         nextToPlayIn = row, col
 
     while True:
+        if moveNum%2 == 0:
+            player = "x"
+        else:
+            player = "o"
         winner = assessFullBoard(fullBoard)
 
 
@@ -156,32 +241,52 @@ def playGame( fullBoard = None, nextToPlayIn = None, player = "x",recordGame = F
                         
                     
             print "It is %s's go. No mini-board has been specified, please enter the co-ordinates of the first mini-board to be played in:" % (player,)
-            row,col = u_in()
+            UI = u_in()
+            if isinstance(UI, str):
+                if UI.lower() in ["u", "undo"]:
+                    r,c = gameSoFar[-1][0]
+                    row,col = gameSoFar[-1][1]
+                    fullBoard[r*3 + row][c*3 + col] = "?"
+                    gameSoFar.pop()
+                elif UI.lower() in ["q", "quit"]:
+                    break
+            else:
+                row,col = UI
+                    
             
-            if not boardIsFull(fullBoard,(row,col)):
-                nextToPlayIn = row,col
+                if not boardIsFull(fullBoard,(row,col)):
+                    nextToPlayIn = row,col
 
         else:
             print "It is %s's go. Enter the co-ordinates of your move." % (player,)
-            row,col = u_in()
-            r = nextToPlayIn[0]*3 + row]
-            c = nextToPlayIn[1]*3 + col]
-            if fullBoard[r][c] == "?":
-                fullBoard[r][c] = player
-
-                if recordGame:
+            UI = u_in()
+            if isinstance(UI, str):
+                if UI.lower() in ["u", "undo"]:
+                    r,c = gameSoFar[-1][0]
+                    row,col = gameSoFar[-1][1]
+                    fullBoard[r*3 + row][c*3 + col] = "?"
+                    gameSoFar.pop()
+                elif UI.lower() in ["q", "quit"]:
+                    break
+            else:
+                row,col = UI
+                r = nextToPlayIn[0]*3 + row
+                c = nextToPlayIn[1]*3 + col
+                if fullBoard[r][c] == "?":
+                    fullBoard[r][c] = moveNum
                     gameSoFar.append((nextToPlayIn,(row,col)))
-                if player == "x":
-                    player = "o"
-                else:
-                    player = "x"
-                nextToPlayIn = row,col
+                    moveNum += 1
+                    nextToPlayIn = row,col
+                    if boardIsFull(fullBoard,(row,col)):
+                        nextToPlayIn = None
+    if recordGame:
+        print gameSoFar
         
     
-def playSetGame(gameSequence, continueGame = True,recordContinuedGame = False, printMove = False, delay = 0):
+def playSetGame(gameSequence, continueGame = True,recordContinuedGame = True, printMove = False, delay = 0):
     fullBoard = [["?"]*9 for _ in range(9)]
     nextToPlayIn = None
-    player = "x"
+    moveNum = 0
     for move in gameSequence:
         if assessFullBoard(fullBoard) != "?":
             print assessFullBoard(fullBoard) + " has already won! Cutting game sequence short."
@@ -193,8 +298,12 @@ def playSetGame(gameSequence, continueGame = True,recordContinuedGame = False, p
         row, col = move[0][0]*3 + move[1][0], move[0][1]*3 + move[1][1]
 
         if fullBoard[row][col] == "?":
-            fullBoard[row][col] = player
+            fullBoard[row][col] = moveNum
             if printMove:
+                if moveNum%2 == 0:
+                    player = "x"
+                else:
+                    player = "o"
                 print ""
                 print ""
                 print ""
@@ -202,11 +311,7 @@ def playSetGame(gameSequence, continueGame = True,recordContinuedGame = False, p
                 drawBoard(fullBoard,move[0],True)
                 time.sleep(delay)
             
-            if player == "x":
-                player = "o"
-            else:
-                player = "x"
-
+            moveNum += 1
             nextToPlayIn = move[1]
             if boardIsFull(fullBoard, nextToPlayIn):
                 nextToPlayIn = None
@@ -224,12 +329,18 @@ def playSetGame(gameSequence, continueGame = True,recordContinuedGame = False, p
             print ""
             print ""
             print ""
-            playGame(fullBoard,nextToPlayIn,player,recordContinuedGame,gameSequence)
+            playGame(fullBoard,nextToPlayIn,moveNum,recordContinuedGame,gameSequence)
 
+
+
+                                                                                                            
+
+#Example game, x tries to use three gambits,
 
 
 
 playSetGame([
+    # First gambit    
     ((1,1), (1,1)), \
     ((1,1), (0,0)), \
     ((0,0), (1,1)), \
@@ -246,13 +357,41 @@ playSetGame([
     ((1,1), (1,2)), \
     ((1,2), (1,1)), \
     ((1,1), (0,1)), \
+
+    # second gambit   
     ((0,1), (0,1)), \
-    ((0,1), (1,1))\
+    ((0,1), (0,0)), \
+    ((0,0), (0,1)), \
+    ((0,1), (2,1)), \
+    ((2,1), (0,1)), \
+    ((0,1), (2,0)), \
+    ((2,0), (0,1)), \
+    ((0,1), (1,2)), \
+    ((1,2), (0,1)), \
+    ((0,1), (0,2)), \
+    ((0,2), (0,1)), \
+    ((0,1), (2,2)), \
+    ((2,2), (0,1)), \
+    ((0,1), (1,0)), \
+
+    ((1,0), (0,1)), \
+    ((0,1), (1,1)) \
+
+
+
+
+            ],True,True,True,0.1)
+
+"""
+    # third gambit    
+    ((2,1), (2,1)), \
+    ((2,1), (0,0)), \
+    ((0,0), (2,1)), \
+    ((2,1), (0,2)), \
+    ((0,2), (2,1)), \
+    ((2,1), (0,1))\
        
 
-
-            ],True,True,True,1)
-"""
  x to play.
 
  _______ _______ ____
